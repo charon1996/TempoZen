@@ -1,17 +1,22 @@
 import React, { useState } from 'react';
-import { BackgroundState } from '../types';
+import { BackgroundState, SoundType } from '../types';
 import { generateBackgroundImage } from '../services/geminiService';
+import { SOUND_OPTIONS } from '../constants';
 
 interface SettingsPanelProps {
   onBackgroundChange: (bg: BackgroundState) => void;
   onTimerSet: (minutes: number | null) => void;
   timerMinutes: number | null;
+  currentSound: SoundType;
+  onSoundChange: (sound: SoundType) => void;
 }
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({ 
   onBackgroundChange, 
   onTimerSet, 
-  timerMinutes 
+  timerMinutes,
+  currentSound,
+  onSoundChange
 }) => {
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
@@ -52,28 +57,24 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
   return (
     <div className="glass-panel p-6 rounded-2xl w-full max-w-md mt-6 space-y-6 animate-fade-in">
-      {/* Background Gen */}
+      
+      {/* Sound Selection */}
       <div>
-        <h3 className="text-sm uppercase tracking-wider text-gray-400 font-semibold mb-3">AI Ambience</h3>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 transition-colors"
-            placeholder="e.g. Rainy cafe window..."
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-          />
-          <button
-            onClick={handleGenerate}
-            disabled={loading}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-              loading 
-                ? 'bg-gray-600 cursor-not-allowed' 
-                : 'bg-cyan-600 hover:bg-cyan-500 hover:shadow-[0_0_15px_rgba(6,182,212,0.5)]'
-            }`}
-          >
-            {loading ? 'Thinking...' : 'Dream'}
-          </button>
+        <h3 className="text-sm uppercase tracking-wider text-gray-400 font-semibold mb-3">Sound Style</h3>
+        <div className="grid grid-cols-2 gap-2">
+            {SOUND_OPTIONS.map((option) => (
+                <button
+                    key={option.value}
+                    onClick={() => onSoundChange(option.value)}
+                    className={`px-3 py-2 rounded-lg text-sm transition-all border ${
+                        currentSound === option.value
+                        ? 'bg-cyan-500/20 border-cyan-500 text-cyan-200'
+                        : 'bg-white/5 border-transparent text-white/70 hover:bg-white/10'
+                    }`}
+                >
+                    {option.label}
+                </button>
+            ))}
         </div>
       </div>
 
@@ -104,6 +105,31 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                  Clear
              </button>
             )}
+        </div>
+      </div>
+
+      {/* Background Gen */}
+      <div>
+        <h3 className="text-sm uppercase tracking-wider text-gray-400 font-semibold mb-3">AI Ambience</h3>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 transition-colors"
+            placeholder="e.g. Rainy cafe window..."
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+          />
+          <button
+            onClick={handleGenerate}
+            disabled={loading}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+              loading 
+                ? 'bg-gray-600 cursor-not-allowed' 
+                : 'bg-cyan-600 hover:bg-cyan-500 hover:shadow-[0_0_15px_rgba(6,182,212,0.5)]'
+            }`}
+          >
+            {loading ? 'Thinking...' : 'Dream'}
+          </button>
         </div>
       </div>
     </div>

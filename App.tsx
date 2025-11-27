@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { PlayState, TimeSignature, BackgroundState } from './types';
+import { PlayState, TimeSignature, BackgroundState, SoundType } from './types';
 import { DEFAULT_BPM, DEFAULT_TIME_SIGNATURE, DEFAULT_BACKGROUND, TIME_SIGNATURE_OPTIONS, MIN_BPM, MAX_BPM } from './constants';
 import { MetronomeAudio } from './services/metronomeAudio';
 import { Visualizer } from './components/Visualizer';
@@ -22,6 +22,7 @@ const App: React.FC = () => {
   const [bpm, setBpm] = useState<number>(DEFAULT_BPM);
   const [timeSignature, setTimeSignature] = useState<TimeSignature>(DEFAULT_TIME_SIGNATURE);
   const [activeBeat, setActiveBeat] = useState<number>(-1);
+  const [soundType, setSoundType] = useState<SoundType>(SoundType.DIGITAL);
   const [background, setBackground] = useState<BackgroundState>({
     url: DEFAULT_BACKGROUND,
     isGenerated: false,
@@ -51,8 +52,9 @@ const App: React.FC = () => {
     if (metronomeRef.current) {
       metronomeRef.current.setBpm(bpm);
       metronomeRef.current.setBeatsPerBar(timeSignature);
+      metronomeRef.current.setSoundType(soundType);
     }
-  }, [bpm, timeSignature]);
+  }, [bpm, timeSignature, soundType]);
 
   // Timer Logic
   useEffect(() => {
@@ -228,6 +230,8 @@ const App: React.FC = () => {
                         else setTimerRemainingSeconds(null);
                     }}
                     timerMinutes={timerDurationMinutes}
+                    currentSound={soundType}
+                    onSoundChange={setSoundType}
                 />
             )}
         </div>

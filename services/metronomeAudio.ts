@@ -1,4 +1,5 @@
 import { LOOKAHEAD_MS, SCHEDULE_AHEAD_TIME_SEC } from '../constants';
+import { SoundType } from '../types';
 
 export class MetronomeAudio {
   private audioContext: AudioContext | null = null;
@@ -6,10 +7,12 @@ export class MetronomeAudio {
   private current16thNote: number = 0;
   private nextNoteTime: number = 0.0;
   private timerID: number | null = null;
+  private noiseBuffer: AudioBuffer | null = null;
   
   // Configuration
   private bpm: number = 120;
   private beatsPerBar: number = 4;
+  private soundType: SoundType = SoundType.DIGITAL;
   
   // Callback for UI visualization
   private onBeatCallback: ((beatIndex: number) => void) | null = null;
@@ -26,11 +29,16 @@ export class MetronomeAudio {
     this.beatsPerBar = beats;
   }
 
+  public setSoundType(type: SoundType) {
+    this.soundType = type;
+  }
+
   public start() {
     if (this.isPlaying) return;
 
     if (!this.audioContext) {
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      this.createNoiseBuffer();
     }
 
     if (this.audioContext.state === 'suspended') {
@@ -51,6 +59,17 @@ export class MetronomeAudio {
     }
   }
 
+  private createNoiseBuffer() {
+    if (!this.audioContext) return;
+    const bufferSize = this.audioContext.sampleRate * 2.0; // 2 seconds of noise
+    const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    this.noiseBuffer = buffer;
+  }
+
   private scheduler = () => {
     // While there are notes that will need to play before the next interval, 
     // schedule them and advance the pointer.
@@ -68,14 +87,7 @@ export class MetronomeAudio {
 
   private nextNote() {
     // Advance current note and time by a 16th note...
-    // Notice this picks up the CURRENT bpm value to calculate beat length.
     const secondsPerBeat = 60.0 / this.bpm;
-    // We are only supporting quarter notes for the main beat right now for simplicity 
-    // (treating "16thNote" variable as actually just "Beat" variable for now for cleaner code if no subdivisions)
-    // However, for expandability, let's treat it as a quarter note engine mainly.
-    // If we want actual 16th notes, we'd divide by 0.25 * secondsPerBeat.
-    // Requirement says "Fixed beat levels", so let's stick to Quarter notes as the main driver.
-    
     this.nextNoteTime += secondsPerBeat; 
 
     this.current16thNote++;
@@ -87,33 +99,27 @@ export class MetronomeAudio {
   private scheduleNote(beatNumber: number, time: number) {
     if (!this.audioContext) return;
 
-    const osc = this.audioContext.createOscillator();
-    const envelope = this.audioContext.createGain();
+    const isAccent = beatNumber === 0;
 
-    osc.connect(envelope);
-    envelope.connect(this.audioContext.destination);
-
-    // Sound customization
-    if (beatNumber === 0) {
-      // First beat of bar - High pitch
-      osc.frequency.value = 1000;
-    } else {
-      // Other beats - Lower pitch
-      osc.frequency.value = 800;
+    // Trigger Sound based on type
+    switch (this.soundType) {
+      case SoundType.DRUM:
+        this.playDrumSound(isAccent, time);
+        break;
+      case SoundType.ANALOG:
+        this.playAnalogSound(isAccent, time);
+        break;
+      case SoundType.WOODBLOCK:
+        this.playWoodblockSound(isAccent, time);
+        break;
+      case SoundType.DIGITAL:
+      default:
+        this.playDigitalSound(isAccent, time);
+        break;
     }
 
-    envelope.gain.value = 1;
-    envelope.gain.exponentialRampToValueAtTime(1, time + 0.001);
-    envelope.gain.exponentialRampToValueAtTime(0.001, time + 0.02);
-
-    osc.start(time);
-    osc.stop(time + 0.03);
-
     // Schedule the visual callback
-    // We use standard setTimeout for the visual to sync roughly with audio time
-    // But since audio time is ahead, we calculate the delay.
     const delay = (time - this.audioContext.currentTime) * 1000;
-    // Safety check for negative delay if system lags
     const safeDelay = Math.max(0, delay);
     
     setTimeout(() => {
@@ -121,5 +127,107 @@ export class MetronomeAudio {
         this.onBeatCallback(beatNumber);
       }
     }, safeDelay);
+  }
+
+  // --- Sound Generators ---
+
+  private playDigitalSound(isAccent: boolean, time: number) {
+    if (!this.audioContext) return;
+    const osc = this.audioContext.createOscillator();
+    const envelope = this.audioContext.createGain();
+
+    osc.connect(envelope);
+    envelope.connect(this.audioContext.destination);
+
+    osc.frequency.value = isAccent ? 1000 : 800;
+    envelope.gain.value = 1;
+    envelope.gain.exponentialRampToValueAtTime(1, time + 0.001);
+    envelope.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+
+    osc.start(time);
+    osc.stop(time + 0.05);
+  }
+
+  private playAnalogSound(isAccent: boolean, time: number) {
+    if (!this.audioContext) return;
+    const osc = this.audioContext.createOscillator();
+    const envelope = this.audioContext.createGain();
+
+    osc.type = 'triangle';
+    osc.connect(envelope);
+    envelope.connect(this.audioContext.destination);
+
+    osc.frequency.setValueAtTime(isAccent ? 880 : 440, time);
+    // Slight pitch drop for analog feel
+    osc.frequency.exponentialRampToValueAtTime(isAccent ? 440 : 220, time + 0.05);
+
+    envelope.gain.setValueAtTime(0, time);
+    envelope.gain.linearRampToValueAtTime(0.8, time + 0.005);
+    envelope.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+
+    osc.start(time);
+    osc.stop(time + 0.05);
+  }
+
+  private playDrumSound(isAccent: boolean, time: number) {
+    if (!this.audioContext) return;
+
+    if (isAccent) {
+        // Kick Drum
+        const osc = this.audioContext.createOscillator();
+        const gain = this.audioContext.createGain();
+        osc.connect(gain);
+        gain.connect(this.audioContext.destination);
+
+        osc.frequency.setValueAtTime(150, time);
+        osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.5);
+
+        gain.gain.setValueAtTime(1, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + 0.5);
+
+        osc.start(time);
+        osc.stop(time + 0.5);
+    } else {
+        // Hi-hat / Shaker
+        const bufferSource = this.audioContext.createBufferSource();
+        bufferSource.buffer = this.noiseBuffer;
+        
+        const filter = this.audioContext.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.value = 8000;
+
+        const gain = this.audioContext.createGain();
+        
+        bufferSource.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.audioContext.destination);
+
+        gain.gain.setValueAtTime(0.4, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+
+        bufferSource.start(time);
+        bufferSource.stop(time + 0.05);
+    }
+  }
+
+  private playWoodblockSound(isAccent: boolean, time: number) {
+    if (!this.audioContext) return;
+    const osc = this.audioContext.createOscillator();
+    const envelope = this.audioContext.createGain();
+
+    // Woodblock is typically a sine wave with very short decay
+    osc.type = 'sine';
+    osc.connect(envelope);
+    envelope.connect(this.audioContext.destination);
+
+    // High pitch for woodblock
+    osc.frequency.value = isAccent ? 1200 : 800;
+
+    envelope.gain.setValueAtTime(0, time);
+    envelope.gain.linearRampToValueAtTime(0.8, time + 0.005);
+    envelope.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
+
+    osc.start(time);
+    osc.stop(time + 0.1);
   }
 }

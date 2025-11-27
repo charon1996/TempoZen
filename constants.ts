@@ -1,4 +1,4 @@
-import { TimeSignature } from './types';
+import { TimeSignature, SoundType } from './types';
 
 export const MIN_BPM = 30;
 export const MAX_BPM = 300;
@@ -16,4 +16,11 @@ export const TIME_SIGNATURE_OPTIONS = [
   { label: '4/4', value: TimeSignature.FOUR_FOUR },
   { label: '5/4', value: TimeSignature.FIVE_FOUR },
   { label: '6/8', value: TimeSignature.SIX_EIGHT },
+];
+
+export const SOUND_OPTIONS = [
+  { label: 'Digital', value: SoundType.DIGITAL },
+  { label: 'Analog', value: SoundType.ANALOG },
+  { label: 'Drum Kit', value: SoundType.DRUM },
+  { label: 'Woodblock', value: SoundType.WOODBLOCK },
 ];

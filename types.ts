@@ -12,6 +12,13 @@ export enum TimeSignature {
   SIX_EIGHT = 6
 }
 
+export enum SoundType {
+  DIGITAL = 'DIGITAL',
+  ANALOG = 'ANALOG',
+  DRUM = 'DRUM',
+  WOODBLOCK = 'WOODBLOCK'
+}
+
 export interface MetronomeSettings {
   bpm: number;
   beatsPerBar: number;
