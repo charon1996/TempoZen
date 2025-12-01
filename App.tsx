@@ -147,8 +147,9 @@ const App: React.FC = () => {
         </div>
 
         {/* BPM Display */}
-        <div className="flex flex-col items-center mb-10">
-          <div className="text-[8rem] font-bold leading-none tracking-tighter tabular-nums text-transparent bg-clip-text bg-gradient-to-b from-white to-white/60 drop-shadow-2xl">
+        <div className="flex flex-col items-center mb-10 w-full">
+          {/* Increased width tolerance and responsiveness for BPM text to avoid clipping */}
+          <div className="text-[6rem] sm:text-[8rem] font-bold leading-none tracking-tighter tabular-nums text-transparent bg-clip-text bg-gradient-to-b from-white to-white/60 drop-shadow-2xl px-8 pb-4">
             {bpm}
           </div>
           <div className="text-sm font-medium tracking-[0.3em] text-cyan-200/80 uppercase mt-2">
